@@ -17,22 +17,27 @@ def analyze_logs(df):
 
     Top source IPs:
     {df['source address'].value_counts().head()}
+    
+    Top destination IPs:
+    {df['destination address'].value_counts().head()}
 
     Denied count:
     {(df['action'] == 'deny').sum()}
     """
     
     prompt = f"""
-    You are a cybersecurity analyst.
+    You are a cybersecurity analyst reviewing firewall traffic logs.
 
-    Here is a summary of firewall traffic:
+    Here is a traffic summary:
 
     {summary}
 
-    Give a short analysis of:
-    - suspicious activity
-    - unusual patterns
-    - anything worth investigating
+    Write a concise analysis with these sections:
+    1. Overall traffic pattern
+    2. Potentially suspicious activity
+    3. Anything worth investigating further
+
+    Be specific and avoid vague filler.
     """
 
     response = client.chat.completions.create(

@@ -1,3 +1,12 @@
 body {
     background-color: #f8f9fa;
 }
+
+.ai-response {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+}
