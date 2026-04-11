@@ -1,12 +1,46 @@
 from flask import Flask, render_template, request
 import pandas as pd
 import os
+from openai import OpenAI
 
 app = Flask(__name__)
+client = OpenAI()
 app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+def analyze_logs(df):
+    summary = f"""
+    Top actions:
+    {df['action'].value_counts().head()}
+
+    Top source IPs:
+    {df['source address'].value_counts().head()}
+
+    Denied count:
+    {(df['action'] == 'deny').sum()}
+    """
+    
+    prompt = f"""
+    You are a cybersecurity analyst.
+
+    Here is a summary of firewall traffic:
+
+    {summary}
+
+    Give a short analysis of:
+    - suspicious activity
+    - unusual patterns
+    - anything worth investigating
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message.content
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -16,6 +50,12 @@ def index():
     row_count = None
     filename = None
     error = None
+    top_actions = None
+    top_source_ips = None
+    top_dest_ips = None
+    denied_count = None
+    ai_analysis = None
+    
 
     if request.method == "POST":
         file = request.files.get("csv_file")
@@ -29,9 +69,16 @@ def index():
 
                 df = pd.read_csv(filepath)
 
+                df.columns = df.columns.str.strip().str.lower()
+                
                 row_count = len(df)
                 columns = df.columns.tolist()
                 filename = file.filename
+                top_actions = df["action"].value_counts().head(5)
+                top_source_ips = df["source address"].value_counts().head(5)
+                top_dest_ips = df["destination address"].value_counts().head(5)
+                denied_count = (df["action"] == "deny").sum()
+                ai_analysis = analyze_logs(df)
 
                 table = df.head(20).to_html(
                     classes="table table-striped table-bordered",
@@ -46,7 +93,12 @@ def index():
         columns=columns,
         row_count=row_count,
         filename=filename,
-        error=error
+        error=error,
+        top_actions=top_actions,
+        top_source_ips=top_source_ips,
+        top_dest_ips=top_dest_ips,
+        denied_count=denied_count,
+        ai_analysis=ai_analysis
     )
 
 
