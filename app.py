@@ -1,12 +1,16 @@
 from flask import Flask, render_template, request
+from dotenv import load_dotenv
 import pandas as pd
 import os
-from openai import OpenAI
+import requests
+
 
 app = Flask(__name__)
-client = OpenAI()
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
+load_dotenv()
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
@@ -40,12 +44,19 @@ def analyze_logs(df):
     Be specific and avoid vague filler.
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+    response = requests.post(
+        OLLAMA_URL,
+        json={
+            "model": MODEL_NAME,
+            "prompt": prompt,
+            "stream": False
+        },
+        timeout=120
     )
 
-    return response.choices[0].message.content
+    response.raise_for_status()
+
+    return response.json()["response"]
 
 
 @app.route("/", methods=["GET", "POST"])
