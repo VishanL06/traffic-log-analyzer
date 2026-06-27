@@ -1,16 +1,18 @@
 # AI-Powered Firewall Log Analyzer
 
-A full-stack web application that analyzes firewall traffic logs and generates insights using Python, Flask, pandas, and OpenAI.
+A full-stack web application that analyzes firewall traffic logs and generates insights using Python, Flask, pandas, and a locally hosted LLM powered by Ollama.
 
 ## Overview
 
 This project allows users to upload firewall traffic logs (CSV format) and receive:
 
 * Key traffic statistics (top IPs, actions, etc.)
-* Security-relevant metrics (e.g., denied traffic)
-* AI-generated analysis highlighting suspicious activity and patterns
+* AI-generated security analysis
+* Actionable insights into potentially suspicious network behavior
 
 The goal is to combine traditional data processing with AI-driven interpretation to simulate a lightweight security analysis tool.
+
+Unlike cloud-based AI solutions, this project performs inference using a locally hosted LLM, keeping firewall data private while eliminating dependency on external AI services.
 
 ---
 
@@ -18,8 +20,8 @@ The goal is to combine traditional data processing with AI-driven interpretation
 
 ### File Upload
 
-* Upload CSV traffic logs through a web interface
-* Handles real-world firewall log formats (e.g., Palo Alto)
+* Upload firewall traffic logs through a web interface
+* Supports CSV exports from firewall platforms such as Palo Alto Panorama
 
 ### Data Analysis (pandas)
 
@@ -28,14 +30,17 @@ The goal is to combine traditional data processing with AI-driven interpretation
 * Top destination IP addresses
 * Denied traffic count
 
-### AI Analysis
+### Local AI Analysis
 
-* Uses OpenAI API to analyze structured traffic summaries
+* Runs entirely on a locally hosted LLM through Ollama
+* No OpenAI API required
+* No recurring API costs
+* Firewall logs remain on your local network
 * Generates insights such as:
 
-  * suspicious activity
-  * unusual traffic patterns
-  * potential investigation points
+  * Overall traffic summary
+  * Potentially suspicious activity
+  * Investigation recommendations
 
 ### Frontend (Flask + Bootstrap)
 
@@ -50,7 +55,8 @@ The goal is to combine traditional data processing with AI-driven interpretation
 * Backend: Python, Flask
 * Data Processing: pandas
 * Frontend: HTML, Bootstrap
-* AI Integration: OpenAI API
+* AI Integration: Ollama + Qwen 3 (or any compatible local model)
+* Environment Management: python-dotenv
 * Version Control: Git, GitHub
 
 ---
@@ -59,55 +65,87 @@ The goal is to combine traditional data processing with AI-driven interpretation
 
 ### 1. Clone the repository
 
-```bash
+``` bash
 git clone https://github.com/YOUR_USERNAME/traffic-log-analyzer.git
 cd traffic-log-analyzer
 ```
 
----
-
 ### 2. Create a virtual environment
 
-```bash
+``` bash
 python3 -m venv .venv
+```
+
+Activate it:
+
+**macOS/Linux**
+
+``` bash
 source .venv/bin/activate
 ```
 
----
+**Windows**
+
+``` powershell
+.venv\Scripts\activate
+```
 
 ### 3. Install dependencies
 
-```bash
+``` bash
 pip install -r requirements.txt
 ```
 
----
+### 4. Install Ollama
 
-### 4. Set your OpenAI API key
+Download and install Ollama from:
 
-```bash
-export OPENAI_API_KEY="your_api_key_here"
+https://ollama.com/download
+
+Then pull a supported model:
+
+``` bash
+ollama pull qwen3:8b
 ```
 
-(Optional: add this to ~/.zshrc for persistence)
+Ensure the Ollama server is running before launching the application.
 
----
+### 5. Configure environment variables
 
-### 5. Run the app
+Create a `.env` file in the project root:
 
-```bash
-python3 app.py
+``` env
+OLLAMA_URL=http://localhost:11434/api/generate
+OLLAMA_MODEL=qwen3:8b
 ```
 
-Then open:
+If the AI server is running on another machine, replace `localhost` with
+that machine's local IP.
 
+Example:
+
+``` env
+OLLAMA_URL=http://192.168.1.xxx:11434/api/generate
+OLLAMA_MODEL=qwen3:8b
+```
+
+### 6. Run the application
+
+``` bash
+python app.py
+```
+
+Open your browser:
+
+``` text
 http://127.0.0.1:5000
+```
 
 ---
 
 ## Project Structure
 
-```
+``` text
 traffic-log-analyzer/
 │
 ├── app.py
@@ -117,44 +155,44 @@ traffic-log-analyzer/
 ├── static/
 │   └── css/
 ├── uploads/
+├── .env.example
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Example Use Case
+## Example Workflow
 
-1. Upload a firewall traffic CSV
-2. View:
-
-   * top source IPs
-   * most common actions
-   * denied traffic count
-3. Receive an AI-generated summary such as:
-   "High concentration of denied traffic from a single IP may indicate scanning or brute-force behavior."
+1.  Upload a firewall traffic log (CSV).
+2.  The application processes the data using pandas.
+3.  Key traffic statistics are extracted.
+4.  A structured prompt is generated and sent to the local LLM through
+    Ollama.
+5.  The AI returns a concise security analysis highlighting suspicious
+    activity and recommended investigation points.
 
 ---
 
-## Notes
+## Why Local AI?
 
-* Column names are normalized to lowercase to handle inconsistent CSV formatting
-* AI analysis is based on summarized data rather than full logs for efficiency
-* Ensure your CSV contains relevant fields such as:
-
-  * action
-  * source address
-  * destination address
+-   Firewall logs never leave your environment
+-   No dependence on cloud AI availability
+-   No API usage costs
+-   Faster inference on GPU-equipped systems
+-   Ability to switch models without modifying application logic
 
 ---
 
 ## Future Improvements
 
-* User-driven queries (ask questions about logs)
-* Anomaly detection (e.g., spikes in traffic)
-* Visualization (charts for traffic patterns)
-* Improved classification of denied traffic types
-* File history and session tracking
+-   User authentication
+-   Scan history per user
+-   Export reports (PDF)
+-   Interactive AI chat about uploaded logs
+-   Threat severity scoring
+-   Traffic visualizations
+-   Support for additional firewall vendors
 
 ---
 
@@ -162,10 +200,13 @@ traffic-log-analyzer/
 
 This project demonstrates:
 
-* real-world data handling
-* full-stack development (Flask + frontend)
-* integration of AI into a practical workflow
-* ability to extract and interpret meaningful insights from raw logs
+-   Full-stack web development with Flask
+-   Cybersecurity log analysis
+-   Data processing with pandas
+-   Local LLM integration through Ollama
+-   REST API communication
+-   Environment configuration and dependency management
+-   Practical application of AI to network security workflows
 
 ---
 
