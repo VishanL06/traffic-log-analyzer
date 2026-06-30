@@ -1,62 +1,18 @@
 from flask import Flask, render_template, request
-from dotenv import load_dotenv
 import pandas as pd
 import os
-import requests
+
+from config import UPLOAD_FOLDER, MAX_CONTENT_LENGTH
+from services.log_processor import clean_columns, get_log_stats, create_preview_table
+from services.ai_analyze import analyze_logs
 
 
 app = Flask(__name__)
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-MODEL_NAME = os.getenv("OLLAMA_MODEL", "qwen3:8b")
-app.config["UPLOAD_FOLDER"] = "uploads"
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
-load_dotenv()
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
 os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-
-def analyze_logs(df):
-    summary = f"""
-    Top actions:
-    {df['action'].value_counts().head()}
-
-    Top source IPs:
-    {df['source address'].value_counts().head()}
-    
-    Top destination IPs:
-    {df['destination address'].value_counts().head()}
-
-    Denied count:
-    {(df['action'] == 'deny').sum()}
-    """
-    
-    prompt = f"""
-    You are a cybersecurity analyst reviewing firewall traffic logs.
-
-    Here is a traffic summary:
-
-    {summary}
-
-    Write a concise analysis with these sections:
-    1. Overall traffic pattern
-    2. Potentially suspicious activity
-    3. Anything worth investigating further
-
-    Be specific and avoid vague filler.
-    """
-
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL_NAME,
-            "prompt": prompt,
-            "stream": False
-        },
-        timeout=120
-    )
-
-    response.raise_for_status()
-
-    return response.json()["response"]
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -71,7 +27,6 @@ def index():
     top_dest_ips = None
     denied_count = None
     ai_analysis = None
-    
 
     if request.method == "POST":
         file = request.files.get("csv_file")
@@ -84,22 +39,21 @@ def index():
                 file.save(filepath)
 
                 df = pd.read_csv(filepath)
+                df = clean_columns(df)
 
-                df.columns = df.columns.str.strip().str.lower()
-                
-                row_count = len(df)
-                columns = df.columns.tolist()
+                stats = get_log_stats(df)
+
+                row_count = stats["row_count"]
+                columns = stats["columns"]
+                top_actions = stats["top_actions"]
+                top_source_ips = stats["top_source_ips"]
+                top_dest_ips = stats["top_dest_ips"]
+                denied_count = stats["denied_count"]
+
                 filename = file.filename
-                top_actions = df["action"].value_counts().head(5)
-                top_source_ips = df["source address"].value_counts().head(5)
-                top_dest_ips = df["destination address"].value_counts().head(5)
-                denied_count = (df["action"] == "deny").sum()
                 ai_analysis = analyze_logs(df)
+                table = create_preview_table(df)
 
-                table = df.head(20).to_html(
-                    classes="table table-striped table-bordered",
-                    index=False
-                )
             except Exception as e:
                 error = f"Error reading file: {e}"
 
